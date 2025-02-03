@@ -3,6 +3,7 @@ import torch
 from torch import nn
 from torch.nn.parameter import Parameter
 import torch.nn.functional as F
+from torch.utils.data import TensorDataset, DataLoader, SequentialSampler, RandomSampler
 
 
 class AutoEncoder(nn.Module):
@@ -46,6 +47,9 @@ class TopClusModel(BertPreTrainedModel):
     def __init__(self, config, input_dim, hidden_dims, n_clusters, kappa):
         super().__init__(config)
         self.init_weights()
+        self.n_clusters = n_clusters
+        self.hidden_dims = hidden_dims
+        self.input_dim = input_dim
         self.topic_emb = Parameter(torch.Tensor(n_clusters, hidden_dims[-1]))
         self.bert = BertModel(config, add_pooling_layer=False)
         self.ae = AutoEncoder(input_dim, hidden_dims)
@@ -58,6 +62,9 @@ class TopClusModel(BertPreTrainedModel):
         self.init_weights()
         for param in self.bert.parameters():
             param.requires_grad = False
+
+    def get_max_topic(self):
+        return self.n_clusters
 
     def cluster_assign(self, z):
         self.topic_emb.data = F.normalize(self.topic_emb.data, dim=-1)
@@ -119,7 +126,7 @@ class TopClusModel(BertPreTrainedModel):
         return avg_doc_emb, input_embs, output_embs, rec_doc_emb, p_word
 
     def inference(self, input_ids, attention_mask):
-        self.bert.eval()
+        self.eval()
         bert_outputs = self.bert(input_ids,
                                  attention_mask=attention_mask)
         last_hidden_states = bert_outputs[0]
@@ -139,3 +146,42 @@ class TopClusModel(BertPreTrainedModel):
         sim = self.topic_sim(z)
         _, z = self.ae(doc_emb)
         return z, valid_word_ids, sim
+    
+    def get_latent_embeddings(self, input_ids, attention_mask):
+        with torch.no_grad():
+            self.eval()
+            bert_outputs = self.bert(input_ids,
+                                    attention_mask=attention_mask)
+            last_hidden_states = bert_outputs[0]
+            attention_mask[:, 0] = 0
+            trans_states = self.dense(last_hidden_states)
+            trans_states = self.activation(trans_states)
+            attn_logits = torch.matmul(trans_states, self.v)
+            attention_mask[:, 0] = 0
+            attn_mask = attention_mask == 0
+            attn_logits.masked_fill_(attn_mask, float('-inf'))
+            attn_weights = F.softmax(attn_logits, dim=-1)
+            doc_emb = (last_hidden_states * attn_weights.unsqueeze(-1)).sum(dim=1)
+
+            _, z_doc = self.ae(doc_emb)
+            return z_doc
+    
+    def encode(self, data, device='cpu', batch_size=32):
+        pass
+    
+    def soft_clustering(self, latent_embeddings, top_p=0.90):
+        with torch.no_grad():
+            self.eval()
+            p_doc = self.cluster_assign(latent_embeddings)
+
+            # Soft clustering of comments with respect probabilities of topics.
+            # Each comment is assigned to the topics with the top_p probabilities.
+            # In other words, the comment is assigned to the topics with the highest 
+            # probabilities until the cumulative probability exceeds top_p.
+            sorted_p, indices = torch.sort(p_doc, dim=-1, descending=True)
+            margin_indices = torch.sum(torch.cumsum(sorted_p, dim=-1) < top_p, dim=-1) + 1
+            soft_clusters = torch.zeros_like(p_doc)
+            for i in range(p_doc.size(0)):
+                soft_clusters[i, indices[i, :margin_indices[i]]] = 1
+
+            return soft_clusters

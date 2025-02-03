@@ -19,7 +19,7 @@ class TopClusTrainer(object):
 
     def __init__(self, args):
         self.args = args
-        pretrained_lm = 'bert-base-uncased'
+        pretrained_lm = args.model
         self.n_clusters = args.n_clusters
         self.model = TopClusModel.from_pretrained(pretrained_lm,
                                                   output_attentions=False,
@@ -222,6 +222,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
 
+    parser.add_argument('--model', default='bert-base-uncased')
     parser.add_argument('--dataset', default='yelp')
     parser.add_argument('--batch_size', type=int, default=32)
     parser.add_argument('--lr', type=float, default=5e-4)

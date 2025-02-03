@@ -18,6 +18,7 @@ import nltk
 nltk.download('stopwords')
 nltk.download('averaged_perceptron_tagger')
 nltk.download('universal_tagset')
+nltk.download('averaged_perceptron_tagger_eng')
 ```
 
 ## Overview
@@ -63,6 +64,8 @@ Topic 75: strawberry,berry,onion,peppers,tomato,onions,potatoes,vegetable,mustar
 ## Running Document Clustering
 
 The latent document embeddings will be saved to `results_${dataset}/latent_doc_emb.pt` which can be used as features to clustering algorithms (e.g., K-Means).
+
+Alternatevely, one can use `soft_clustering` method in `TopClusModel` that assigns topics to comments with respect to predicted probabilities following the Top-P method. 
 
 If you have ground truth document labels, you could obtain the document clustering evaluation results by passing the document label file and the saved latent document embedding file to the `cluster_eval` function in [`src/utils.py`](src/utils.py). For example:
 ```
