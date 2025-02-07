@@ -1,10 +1,11 @@
-from transformers import BertPreTrainedModel, BertModel
 import torch
+import torch.nn.functional as F
+
 from torch import nn
 from torch.nn.parameter import Parameter
-import torch.nn.functional as F
 from torch.utils.data import TensorDataset, DataLoader, SequentialSampler, RandomSampler
-
+from transformers import AutoTokenizer, AutoModel
+from transformers import BertPreTrainedModel, BertModel
 
 class AutoEncoder(nn.Module):
 
@@ -51,7 +52,7 @@ class TopClusModel(BertPreTrainedModel):
         self.hidden_dims = hidden_dims
         self.input_dim = input_dim
         self.topic_emb = Parameter(torch.Tensor(n_clusters, hidden_dims[-1]))
-        self.bert = BertModel(config, add_pooling_layer=False)
+        self.bert = AutoModel.from_pretrained(config, add_pooling_layer=False)
         self.ae = AutoEncoder(input_dim, hidden_dims)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
         self.dense = nn.Linear(config.hidden_size, config.hidden_size)

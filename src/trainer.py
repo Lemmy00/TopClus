@@ -6,6 +6,7 @@ from torch.utils.data import TensorDataset, DataLoader, SequentialSampler, Rando
 from nltk.corpus import stopwords
 import string
 from transformers import BertTokenizer
+from transformers import AutoTokenizer
 from model import TopClusModel
 import os
 from tqdm import tqdm
@@ -31,7 +32,7 @@ class TopClusTrainer(object):
         self.utils = TopClusUtils()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.latent_dim = eval(args.hidden_dims)[-1]
-        tokenizer = BertTokenizer.from_pretrained(pretrained_lm, do_lower_case=True)
+        tokenizer = AutoTokenizer.from_pretrained(pretrained_lm, do_lower_case=True)
         self.vocab = tokenizer.get_vocab()
         self.inv_vocab = {k:v for v, k in self.vocab.items()}
         self.filter_vocab()
@@ -90,7 +91,7 @@ class TopClusTrainer(object):
                     total_loss += loss.item()
                     loss.backward()
                     optimizer.step()
-                print(f"epoch {epoch}: loss = {total_loss / (batch_idx+1):.4f}")
+                print(f"epoch {epoch + 1}: loss = {total_loss / (batch_idx+1):.4f}")
             torch.save(model.ae.state_dict(), pretrained_path)
             print(f"Pretrained model saved to {pretrained_path}")
 
@@ -212,7 +213,7 @@ class TopClusTrainer(object):
                 optimizer.step()
             if (epoch+1) % 10 == 0 and self.args.do_inference:
                 self.inference(topk=self.args.k, suffix=f"_{epoch}")
-            print(f"epoch {epoch+1}: rec_loss = {total_rec_loss / (batch_idx+1):.4f}; rec_doc_loss = {total_rec_doc_loss / (batch_idx+1):.4f}; cluster_loss = {total_clus_loss / (batch_idx+1):.4f}")
+            print(f"epoch {epoch + 1}: rec_loss = {total_rec_loss / (batch_idx+1):.4f}; rec_doc_loss = {total_rec_doc_loss / (batch_idx+1):.4f}; cluster_loss = {total_clus_loss / (batch_idx+1):.4f}")
 
         model_path = os.path.join(self.data_dir, "model.pt")
         torch.save(model.state_dict(), model_path)
