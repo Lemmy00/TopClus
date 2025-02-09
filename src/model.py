@@ -45,22 +45,20 @@ class AutoEncoder(nn.Module):
 
 class TopClusModel(nn.Module):
 
-    def __init__(self, config, input_dim, hidden_dims, n_clusters, kappa):
+    def __init__(self, model, input_dim, hidden_dims, n_clusters, kappa):
         super(TopClusModel, self).__init__()
         self.n_clusters = n_clusters
         self.hidden_dims = hidden_dims
         self.input_dim = input_dim
         self.topic_emb = Parameter(torch.Tensor(n_clusters, hidden_dims[-1]))
-        self.bert = AutoModel.from_pretrained(config, add_pooling_layer=False)
+        self.bert = AutoModel.from_pretrained(model, add_pooling_layer=False)
         self.ae = AutoEncoder(input_dim, hidden_dims)
-        self.dropout = nn.Dropout(config.hidden_dropout_prob)
-        self.dense = nn.Linear(config.hidden_size, config.hidden_size)
+        self.dropout = nn.Dropout(self.bert.config.hidden_dropout_prob)
+        self.dense = nn.Linear(self.bert.config.hidden_size, self.bert.config.hidden_size)
         self.activation = nn.Tanh()
         self.kappa = kappa
-        self.v = Parameter(torch.rand(config.hidden_size))
+        self.v = Parameter(torch.rand(self.bert.config.hidden_size))
         torch.nn.init.xavier_normal_(self.topic_emb.data)
-        torch.nn.init.xavier_normal_(self.v.data)
-        torch.nn.init.xavier_normal_(self.dense.weight)
         for param in self.bert.parameters():
             param.requires_grad = False
 

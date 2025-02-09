@@ -22,7 +22,7 @@ class TopClusTrainer(object):
         self.args = args
         pretrained_lm = args.model
         self.n_clusters = args.n_clusters
-        self.model = TopClusModel(config=pretrained_lm,
+        self.model = TopClusModel(model=pretrained_lm,
                                   input_dim=args.input_dim,
                                   hidden_dims=eval(args.hidden_dims),
                                   n_clusters=args.n_clusters,
